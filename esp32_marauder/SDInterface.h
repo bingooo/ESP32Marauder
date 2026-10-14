@@ -9,7 +9,13 @@
 #ifdef HAS_C5_SD
   #include "FS.h"
 #endif
-#include "SD.h"
+#ifdef MARAUDER_ESP32CAM
+  #include "SD_MMC.h"
+  #define MARAUDER_SD SD_MMC
+#else
+  #include "SD.h"
+  #define MARAUDER_SD SD
+#endif
 #include "SPIFFS.h"
 #ifdef HAS_C5_SD
   #include "SPI.h"

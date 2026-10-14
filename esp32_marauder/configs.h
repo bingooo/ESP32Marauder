@@ -44,6 +44,7 @@
   //#define MARAUDER_M5_NANO_C6
   //#define DUAL_MINI_C5
   //#define MARAUDER_POOM
+  //#define MARAUDER_ESP32CAM
   //// END BOARD TARGETS
 
   // The official Arduino board package supplies this identifier for the XIAO
@@ -134,6 +135,8 @@
     #define HARDWARE_NAME "M5 Nano C6"
   #elif defined(MARAUDER_POOM)
     #define HARDWARE_NAME "POOM"
+  #elif defined(MARAUDER_ESP32CAM)
+    #define HARDWARE_NAME "ESP32-CAM CLI"
   #else
     #define HARDWARE_NAME "ESP32"
   #endif
@@ -432,6 +435,14 @@
     //#define HAS_TEMP_SENSOR
     //#define HAS_GPS
     //#define HAS_NIMBLE_2
+  #endif
+
+  #ifdef MARAUDER_ESP32CAM
+    #define HAS_BT
+    #define HAS_NIMBLE_2
+    #define HAS_SD
+    #define USE_SD
+    #define ESP32CAM_FLASH_LED_PIN 4
   #endif
 
   #ifdef MARAUDER_FLIPPER

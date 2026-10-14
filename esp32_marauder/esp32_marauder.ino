@@ -243,6 +243,11 @@ void setup()
   
   Serial.begin(115200);
 
+  #ifdef MARAUDER_ESP32CAM
+    pinMode(ESP32CAM_FLASH_LED_PIN, OUTPUT);
+    digitalWrite(ESP32CAM_FLASH_LED_PIN, LOW);
+  #endif
+
   #ifdef HAS_ACT_LED
     pinMode(ACT_LED_PIN, OUTPUT);
     delay(100);
@@ -277,7 +282,7 @@ void setup()
     digitalWrite(TFT_CS, HIGH);
   #endif
   
-  #if defined(HAS_SD) && !defined(HAS_C5_SD)
+  #if defined(HAS_SD) && !defined(HAS_C5_SD) && !defined(MARAUDER_ESP32CAM)
     pinMode(SD_CS, OUTPUT);
 
     delay(10);

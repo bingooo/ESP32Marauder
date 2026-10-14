@@ -162,11 +162,13 @@ bool SDInterface::initSD() {
       #endif
       Serial.println(F("Using external SPI configuration..."));
       this->spiExt->begin(SPI_SCK, SPI_MISO, SPI_MOSI, SD_CS);
-      if (!SD.begin(SD_CS, *(this->spiExt))) {
+      if (!MARAUDER_SD.begin(SD_CS, *(this->spiExt))) {
     #elif defined(HAS_C5_SD)
-      if (!SD.begin(SD_CS, *_spi)) {
+      if (!MARAUDER_SD.begin(SD_CS, *_spi)) {
+    #elif defined(MARAUDER_ESP32CAM)
+      if (!MARAUDER_SD.begin("/sdcard", true)) {
     #else
-      if (!SD.begin(SD_CS)) {
+      if (!MARAUDER_SD.begin(SD_CS)) {
     #endif
       Serial.println(F("Failed to mount SD Card"));
       this->supported = false;
@@ -174,9 +176,9 @@ bool SDInterface::initSD() {
     }
     else {
       this->supported = true;
-      this->cardType = SD.cardType();
+      this->cardType = MARAUDER_SD.cardType();
 
-      this->cardSizeMB = SD.cardSize() / (1024 * 1024);
+      this->cardSizeMB = MARAUDER_SD.cardSize() / (1024 * 1024);
     
       if (this->supported) {
         const int NUM_DIGITS = log10(this->cardSizeMB) + 1;
@@ -193,9 +195,9 @@ bool SDInterface::initSD() {
         this->card_sz = sz;
       }
 
-      if (!SD.exists("/SCRIPTS")) {
+      if (!MARAUDER_SD.exists("/SCRIPTS")) {
 
-        SD.mkdir("/SCRIPTS");
+        MARAUDER_SD.mkdir("/SCRIPTS");
       }
 
       this->sd_files = new LinkedList<String>();
@@ -210,7 +212,7 @@ bool SDInterface::initSD() {
 
 File SDInterface::getFile(String path) {
   if (this->supported) {
-    File file = SD.open(path, FILE_READ);
+    File file = MARAUDER_SD.open(path, FILE_READ);
 
     //if (file)
     return file;
@@ -218,7 +220,7 @@ File SDInterface::getFile(String path) {
 }
 
 bool SDInterface::removeFile(String file_path) {
-  if (SD.remove(file_path))
+  if (MARAUDER_SD.remove(file_path))
     return true;
   else
     return false;
@@ -234,7 +236,7 @@ bool SDInterface::migrateSPIFFS(uint8_t operation, size_t& files_copied, size_t&
   }
 
   const String backup_path = "/spiffs";
-  File backup = SD.open(backup_path);
+  File backup = MARAUDER_SD.open(backup_path);
   bool valid_backup = backup && backup.isDirectory();
   backup.close();
 
@@ -243,7 +245,7 @@ bool SDInterface::migrateSPIFFS(uint8_t operation, size_t& files_copied, size_t&
       error = 2;
       return false;
     }
-    return copyTree(SD, backup_path, nullptr, "", files_copied, bytes_copied, error);
+    return copyTree(MARAUDER_SD, backup_path, nullptr, "", files_copied, bytes_copied, error);
   }
 
   if (operation == 2) {
@@ -252,27 +254,27 @@ bool SDInterface::migrateSPIFFS(uint8_t operation, size_t& files_copied, size_t&
       return false;
     }
     const String rollback_path = "/spiffs.restore-rollback";
-    if (!removeTree(SD, rollback_path)) {
+    if (!removeTree(MARAUDER_SD, rollback_path)) {
       error = 3;
       return false;
     }
     size_t rollback_files = 0, rollback_bytes = 0;
     uint8_t rollback_error = 0;
-    if (!copyTree(SPIFFS, "/", &SD, rollback_path, rollback_files, rollback_bytes, rollback_error)) {
-      removeTree(SD, rollback_path);
+    if (!copyTree(SPIFFS, "/", &MARAUDER_SD, rollback_path, rollback_files, rollback_bytes, rollback_error)) {
+      removeTree(MARAUDER_SD, rollback_path);
       error = 3;
       return false;
     }
     bool cleared = removeTree(SPIFFS, "/", true);
-    if (cleared && copyTree(SD, backup_path, &SPIFFS, "/", files_copied, bytes_copied, error)) {
-      removeTree(SD, rollback_path);
+    if (cleared && copyTree(MARAUDER_SD, backup_path, &SPIFFS, "/", files_copied, bytes_copied, error)) {
+      removeTree(MARAUDER_SD, rollback_path);
       return true;
     }
     removeTree(SPIFFS, "/", true);
     size_t recovered_files = 0, recovered_bytes = 0;
     uint8_t recovery_error = 0;
-    copyTree(SD, rollback_path, &SPIFFS, "/", recovered_files, recovered_bytes, recovery_error);
-    removeTree(SD, rollback_path);
+    copyTree(MARAUDER_SD, rollback_path, &SPIFFS, "/", recovered_files, recovered_bytes, recovery_error);
+    removeTree(MARAUDER_SD, rollback_path);
     error = 3;
     return false;
   }
@@ -280,37 +282,37 @@ bool SDInterface::migrateSPIFFS(uint8_t operation, size_t& files_copied, size_t&
   const String staging_path = "/spiffs.tmp";
   const String previous_path = "/spiffs.previous";
 
-  if (!removeTree(SD, staging_path) || !removeTree(SD, previous_path)) {
+  if (!removeTree(MARAUDER_SD, staging_path) || !removeTree(MARAUDER_SD, previous_path)) {
     error = 3;
     return false;
   }
 
-  if (!copyTree(SPIFFS, "/", &SD, staging_path, files_copied, bytes_copied, error)) {
-    removeTree(SD, staging_path);
+  if (!copyTree(SPIFFS, "/", &MARAUDER_SD, staging_path, files_copied, bytes_copied, error)) {
+    removeTree(MARAUDER_SD, staging_path);
     return false;
   }
 
-  if (SD.exists(backup_path) && !SD.rename(backup_path, previous_path)) {
-    removeTree(SD, staging_path);
+  if (MARAUDER_SD.exists(backup_path) && !MARAUDER_SD.rename(backup_path, previous_path)) {
+    removeTree(MARAUDER_SD, staging_path);
     error = 3;
     return false;
   }
 
-  if (!SD.rename(staging_path, backup_path)) {
-    if (SD.exists(previous_path))
-      SD.rename(previous_path, backup_path);
+  if (!MARAUDER_SD.rename(staging_path, backup_path)) {
+    if (MARAUDER_SD.exists(previous_path))
+      MARAUDER_SD.rename(previous_path, backup_path);
     error = 3;
     return false;
   }
 
-  removeTree(SD, previous_path);
+  removeTree(MARAUDER_SD, previous_path);
   return true;
 }
 // GCOVR_EXCL_STOP
 
 void SDInterface::listDirToLinkedList(LinkedList<String>* file_names, String str_dir, String ext) {
   if (this->supported) {
-    File dir = SD.open(str_dir);
+    File dir = MARAUDER_SD.open(str_dir);
     while (true)
     {
       File entry = dir.openNextFile();
@@ -338,7 +340,7 @@ bool SDInterface::listDirectory(String path, LinkedList<SDDirectoryEntry>* entri
   if (!this->supported || entries == nullptr)
     return false;
 
-  File dir = SD.open(path);
+  File dir = MARAUDER_SD.open(path);
   if (!dir || !dir.isDirectory()) {
     dir.close();
     return false;
@@ -363,7 +365,7 @@ bool SDInterface::listDirectory(String path, LinkedList<SDDirectoryEntry>* entri
 
 void SDInterface::listDir(String str_dir){
   if (this->supported) {
-    File dir = SD.open(str_dir);
+    File dir = MARAUDER_SD.open(str_dir);
     while (true)
     {
       File entry = dir.openNextFile();
@@ -397,7 +399,7 @@ void SDInterface::runUpdate(String file_name) {
     display_obj.tft.println("Opening " + file_name + "...");
   #endif
 
-  File updateBin = SD.open(file_name);
+  File updateBin = MARAUDER_SD.open(file_name);
 
   if (updateBin) {
     if(updateBin.isDirectory()){
